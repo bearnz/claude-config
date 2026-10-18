@@ -1,0 +1,30 @@
+# Allowlist. ~/.claude also holds credentials, session transcripts, caches and
+# plugin installs, so ignore everything and un-ignore only what's tracked.
+# To track something new, add a `!` line here. Never `git add -f`.
+#
+# Ignored files are still here, not absent: never run `git clean -x` (or -X)
+# in this repo. It would delete .credentials.json, projects/ and the rest.
+/*
+
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/.github/
+
+!/CLAUDE.md
+!/settings.json
+!/hooks/
+!/git-hooks/
+!/templates/
+
+# Only Josh's own skills. skills/synced/ is managed by the Claude app.
+!/skills/
+/skills/*
+!/skills/commit-message/
+!/skills/new-project/
+!/skills/pr/
+!/skills/resolve-merge-conflicts/
+!/skills/secret-scan/
+
+__pycache__/
+*.py[cod]
