@@ -54,6 +54,9 @@ CASES = [
     # bootstrap pushes, tags, releases, API writes
     (MP, "gh repo create foo --private --source . --push", "deny"),
     (MP, "gh repo create foo --private --add-readme", "pass"),
+    (MP, "gh repo create bearnz/foo --private --template bearnz/project-template --description 'x'", "pass"),
+    (MP, "gh repo create bearnz/foo --public --template bearnz/project-template", "ask"),
+    (MP, "gh repo create bearnz/foo --private --template bearnz/project-template --push", "deny"),
     (CT, "git push origin v1", "deny"),
     (CT, "git push origin refs/tags/v1", "deny"),
     (CT, "git push origin feature/x --follow-tags", "deny"),

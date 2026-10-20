@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Scaffold a new side project in A:\.dev\<name>. A private GitHub repo under bearnz starts from a GitHub-made README, gets cloned locally, and its scaffold (README, .gitignore for the stack, a lean CLAUDE.md, the secret-scan workflow) arrives on a feature branch as a PR for Josh to review and merge. Nothing lands on main unreviewed. Use whenever Josh wants to start, spin up, bootstrap or scaffold a new project, repo or side project — "new project", "start a project for X", "set up a repo for this", "/new-project" — and also when throwaway work in a scratch folder should become a real project.
+description: Scaffold a new side project in A:\.dev\<name>. A private GitHub repo under bearnz is created from the reviewed bearnz/project-template (README, common .gitignore, a lean CLAUDE.md, the secret-scan workflow), cloned locally, and a language overlay (python by default, godot, or base only) arrives on feature/scaffold as a PR for Josh to review and merge. Also covers syncing later base-template changes into existing repos. Use whenever Josh wants to start, spin up, bootstrap or scaffold a new project, repo or side project — "new project", "start a project for X", "set up a repo for this", "/new-project" — when throwaway work in a scratch folder should become a real project, and when an existing repo should pick up changes to the project template.
 ---
 
 # New side project
@@ -8,21 +8,35 @@ description: Scaffold a new side project in A:\.dev\<name>. A private GitHub rep
 Josh's conventions live in `~/.claude/CLAUDE.md`. This skill applies them to a
 project that doesn't exist yet: one predictable shape for every side project.
 
-**The rule this skill exists to keep:** no code reaches `main` without a PR
-that Josh reviewed and merged, and that includes a brand-new repo. GitHub
-creates `main` with nothing on it but its own README, and everything Claude
-writes comes in through the first PR. The push guard denies
-`gh repo create --push` for exactly this reason.
+Projects are built in two layers:
+
+- **Base**: the private template repo `bearnz/project-template`. It is
+  language-neutral and holds what every repo gets: `README.md` and `CLAUDE.md`
+  with `PROJECT_NAME` / `PROJECT_DESCRIPTION` placeholders and Running/Testing
+  "Not written yet", a common `.gitignore` (secrets, local overrides, OS
+  clutter), and `.github/workflows/secret-scan.yml`. Josh reviewed it, and it
+  changes only through PRs on that repo.
+- **Overlay**: `~/.claude/templates/<stack>/`, applied on the project's first
+  feature branch. Each overlay has a `gitignore` with lines to append, and may
+  have an `apply.sh` that generates the rest with the language's own tooling.
+
+**The rule this skill keeps:** the only commit that reaches `main` without a PR
+is the one GitHub makes from the reviewed template when it creates the repo.
+Everything after that (the filled-in placeholders and the overlay included)
+comes in on `feature/scaffold` through a PR. The push guard denies
+`gh repo create --push` for this reason.
 
 ## 1. Pin down the inputs
 
 You need four things. Take them from the request, and ask (one AskUserQuestion
 call) only for the ones you can't infer:
 
-- **name** — kebab-case. It is both the folder and the GitHub repo name.
-- **one-line description** — used in the README, CLAUDE.md and the GitHub repo.
-- **stack** — `python`, `godot`, or `other` (say what). This picks the .gitignore.
-- **visibility** — private unless Josh says otherwise. Don't ask.
+- **name**: kebab-case. It is both the folder and the GitHub repo name.
+- **one-line description**: used in the README, CLAUDE.md, the GitHub repo and
+  (for Python) pyproject.toml.
+- **stack**: `python` (the default), `godot`, or `other` (say what). It picks
+  the overlay.
+- **visibility**: private unless Josh says otherwise. Don't ask.
 
 ## 2. Check nothing is already there
 
@@ -34,75 +48,69 @@ gh repo view "bearnz/<name>" --json name 2>/dev/null && echo REPO_EXISTS
 If either one exists, stop and ask. Never scaffold over an existing folder or
 repo.
 
-## 3. Create the repo on GitHub — only after a yes
+## 3. Create the repo from the template, only after a yes
 
 Show Josh the name, description and visibility, then ask. Creating a repo is
 outward-facing. On a yes:
 
 ```bash
-gh repo create "bearnz/<name>" --private --add-readme --description "<description>"
+gh repo create "bearnz/<name>" --private --template bearnz/project-template --description "<description>"
 git clone "https://github.com/bearnz/<name>.git" "A:/.dev/<name>"
+git -C "A:/.dev/<name>" log --oneline
 git -C "A:/.dev/<name>" switch -c feature/scaffold
 ```
 
-`main` now holds only GitHub's one-line README, which needs no review.
+`main` now holds one commit, GitHub's copy of the template. If `git log` shows
+no commits, GitHub hadn't finished generating the repo yet: delete the empty
+local clone, wait a few seconds, and clone again.
 
-**If Josh wants it local-only for now:** `git init -b main`, make one empty
-commit (`git commit --allow-empty -m "chore: initialize repository"`), then
-`git switch -c feature/scaffold`. When it goes to GitHub later, create the repo
-*without* `--add-readme` or `--push`. Josh pushes the empty `main` from a
+**If Josh wants it local-only for now:** clone the template instead
+(`git clone https://github.com/bearnz/project-template.git "A:/.dev/<name>"`),
+then `git -C "A:/.dev/<name>" remote remove origin` and
+`git switch -c feature/scaffold`. When it goes to GitHub later, create an empty
+repo (no `--add-readme`, `--template` or `--push`). Josh pushes `main` from a
 terminal with `ALLOW_MAIN_PUSH=1 git push -u origin main` (the pre-push hook and
 the guard both block Claude from doing it), and the scaffold branch then
-follows as a normal PR.
+follows as a normal PR. The template's own history comes along in that case;
+say so when offering it.
 
-## 4. Write the scaffold (on `feature/scaffold`)
+## 4. Fill in the base and apply the overlay (on `feature/scaffold`)
 
-**README.md** (replaces GitHub's): the name as the heading, the description,
-then "## Running" and "## Testing" sections that say plainly they haven't been
-written yet. Don't invent run instructions for code that doesn't exist yet.
+**Placeholders:** replace `PROJECT_NAME` and `PROJECT_DESCRIPTION` in
+`README.md` and `CLAUDE.md` (use Edit; a description can hold characters that
+break a sed). Leave Running and Testing as "Not written yet" unless a command
+for them has actually been run.
 
-**.gitignore**: always include `.env`, `.env.*`, `*.local.json`,
-`.claude/settings.local.json`, `.DS_Store` and `Thumbs.db`. Then add the stack's
-entries:
-- python: `__pycache__/`, `*.py[cod]`, `.venv/`, `.pytest_cache/`, `dist/`,
-  `build/`, `*.egg-info/`
-- godot: `.godot/`, `*.translation`, `export_presets.cfg`, `/android/`
-
-For a Python project, also run `uv init --app --vcs none` in the folder. That
-adds `pyproject.toml`, `.python-version` and a `main.py`. Report what it created
-rather than assuming.
-
-**CLAUDE.md**: keep it short. It gets read every session, so everything in it
-should be true and current:
-
-```markdown
-# <name>
-
-<one-line description>
-
-## Running
-
-Not written yet.
-
-## Testing
-
-Not written yet.
-
-## Notes
-
-Conventions are in ~/.claude/CLAUDE.md (feature branches -> PR -> main,
-push only on approval, provenance labels).
-```
-
-Fill in Running and Testing as soon as they are real, and only with commands
-that have actually been run.
-
-**Secret scanning**: the standard caller from the template. Don't edit the copy:
+**Overlay:** from the repo root,
 
 ```bash
-mkdir -p "A:/.dev/<name>/.github/workflows"
-cp ~/.claude/templates/secret-scan/.github/workflows/secret-scan.yml "A:/.dev/<name>/.github/workflows/"
+cat ~/.claude/templates/<stack>/gitignore >> .gitignore
 ```
+
+then, if the overlay has an `apply.sh`, run it. Report what each step created
+rather than assuming.
+
+- **python** (default):
+
+  ```bash
+  sh ~/.claude/templates/python/apply.sh "<description>"
+  ```
+
+  This runs `uv init --package --app --vcs none --author-from none
+  --python 3.10 --description "<description>" .`, which keeps the base README and
+  adds `pyproject.toml` (requires-python `>=3.10`, a `[project.scripts]` entry
+  named after the project, the `uv_build` backend), `.python-version` (`3.10`)
+  and `src/<package>/__init__.py`. It then adds pytest as a dev dependency
+  (`uv.lock` appears; commit it), writes `tests/test_smoke.py` and runs
+  `uv run pytest`. It refuses to run where a `pyproject.toml` already exists.
+  Afterwards run `uv run <name>` too. Once both have passed, fill CLAUDE.md and
+  the README in: Running is `uv run <name>`, Testing is `uv run pytest`.
+- **godot**: the gitignore lines only. Godot writes `project.godot` itself when
+  Josh first opens the folder in the editor, so don't hand-write one.
+- **other**: base only, no overlay. Add the stack's ignore lines by hand. If
+  the same language comes up a second time, propose a new
+  `~/.claude/templates/<lang>/` overlay (a `gitignore`, plus an `apply.sh` if
+  the language has an init tool) as a claude-config PR.
 
 ## 5. Commit, then review before anything leaves the PC
 
@@ -112,8 +120,9 @@ git -C "A:/.dev/<name>" commit -m "chore: scaffold <name>"
 ```
 
 The global pre-commit hook runs gitleaks on this commit. Then show Josh the
-complete diff of what the PR will contain (`git diff origin/main...HEAD`, or the
-file list plus contents for a small scaffold), and ask before pushing.
+complete diff of what the PR will contain (`git diff origin/main...HEAD`, or
+the file list plus contents for a small scaffold; `uv.lock` can be summarised),
+and ask before pushing.
 
 ## 6. Push the branch and raise the PR
 
@@ -121,16 +130,41 @@ file list plus contents for a small scaffold), and ask before pushing.
 git -C "A:/.dev/<name>" push -u origin feature/scaffold
 ```
 
-Then use `/pr` against `main`. The secret-scan workflow runs on that PR, which
-is its first real test in the new repo. Report the CI result. Josh reviews and
-merges. Never merge it yourself.
+Then use `/pr` against `main`. The secret-scan workflow runs on that PR. Report
+the CI result. Josh reviews and merges. Never merge it yourself.
 
 ## 7. Hand over
 
 - If this session is running somewhere else (a scratch folder, another
   project), offer to move it into the new folder.
 - Report what exists: local path, GitHub URL, the scaffold PR and its CI state,
-  and the current branch. Say what wasn't done, such as no run or test commands
-  yet.
+  and the current branch. Say what wasn't done, such as run or test commands
+  that are still "Not written yet".
 - Further work starts on a new `feature/` branch from `origin/main` once the
   scaffold PR is merged.
+
+## Syncing base changes into an existing repo
+
+GitHub templates copy files once, at creation. A later change to
+`bearnz/project-template` (say, a new `.gitignore` line) never reaches repos
+made earlier, nor repos that predate the template. Bring it over as a normal PR:
+
+1. Get the current base:
+   `git clone --depth 1 https://github.com/bearnz/project-template.git <short temp path>`.
+2. In the target repo, cut `chore/sync-template` from `origin/main`. If Josh
+   has uncommitted work in the main checkout, use a throwaway worktree on a
+   short path instead of switching under it.
+3. Copy over only the base files that changed, file by file:
+   - `.github/workflows/secret-scan.yml`: copy as is (it's the same file as
+     `~/.claude/templates/secret-scan/`; `/secret-scan` is the other way in).
+   - `.gitignore`: add the new base lines; keep the repo's own (overlay and
+     project) lines.
+   - `README.md`, `CLAUDE.md`: these belong to the project now. Never copy the
+     placeholder versions over them. Carry a new base convention across by
+     hand, in the project's own words.
+4. Commit (`chore: sync base files from project-template`), show Josh the diff,
+   push on a yes, and `/pr`.
+
+Don't `git merge --allow-unrelated-histories` the template in. It would pull
+the template's whole history and its placeholder README and CLAUDE.md into the
+repo, and conflict on every file the project has since made its own.
