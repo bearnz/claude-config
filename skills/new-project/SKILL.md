@@ -55,10 +55,14 @@ outward-facing. On a yes:
 
 ```bash
 gh repo create "bearnz/<name>" --private --template bearnz/project-template --description "<description>"
+gh repo edit "bearnz/<name>" --delete-branch-on-merge
 git clone "https://github.com/bearnz/<name>.git" "A:/.dev/<name>"
 git -C "A:/.dev/<name>" log --oneline
 git -C "A:/.dev/<name>" switch -c feature/scaffold
 ```
+
+Every bearnz repo deletes a PR's head branch once it's merged.
+`gh repo create` has no flag for that, hence the `gh repo edit`.
 
 `main` now holds one commit, GitHub's copy of the template. If `git log` shows
 no commits, GitHub hadn't finished generating the repo yet: delete the empty
@@ -68,7 +72,8 @@ local clone, wait a few seconds, and clone again.
 (`git clone https://github.com/bearnz/project-template.git "A:/.dev/<name>"`),
 then `git -C "A:/.dev/<name>" remote remove origin` and
 `git switch -c feature/scaffold`. When it goes to GitHub later, create an empty
-repo (no `--add-readme`, `--template` or `--push`). Josh pushes `main` from a
+repo (no `--add-readme`, `--template` or `--push`), then run the same
+`gh repo edit --delete-branch-on-merge`. Josh pushes `main` from a
 terminal with `ALLOW_MAIN_PUSH=1 git push -u origin main` (the pre-push hook and
 the guard both block Claude from doing it), and the scaffold branch then
 follows as a normal PR. The template's own history comes along in that case;
