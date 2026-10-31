@@ -15,7 +15,7 @@ the files from here, so the checkout is the live config.
 | `hooks/` | `git_push_guard.py` (the PreToolUse push guard) and its tests |
 | `git-hooks/` | Global git hooks (`core.hooksPath`): `_dispatch.sh`, one stub per hook, `test_pre_push.sh` |
 | `skills/` | Josh's own skills: commit-message, new-project, pr, resolve-merge-conflicts, secret-scan |
-| `templates/` | The secret-scan workflow that `/secret-scan` copies into repos |
+| `templates/` | The secret-scan workflow that `/secret-scan` copies into repos, and the `/new-project` language overlays (`python/`, `godot/`) applied on top of `bearnz/project-template` |
 
 `.gitignore` is an allowlist. Everything else in `~/.claude` (credentials,
 `projects/` transcripts, caches, plugin installs, `skills/synced/`) is

@@ -119,7 +119,10 @@ so never run `git clean -x`/`-X` or `git add -f` here.
 ## New projects
 
 New side projects live in `A:\.dev\<kebab-case-name>`. Use the `/new-project`
-skill: GitHub creates `main` with its README, and the scaffold arrives as a PR.
+skill: GitHub creates `main` from `bearnz/project-template` (the
+language-neutral base), and the language overlay from `~/.claude/templates/`
+(python by default, godot) arrives as a PR. Template changes reach existing
+repos through a copy-files PR, as the skill describes.
 
 ## Machine
 
