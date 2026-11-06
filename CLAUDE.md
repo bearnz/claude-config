@@ -31,8 +31,13 @@ Rules that make the labels worth anything:
 ### The rules
 
 - **Nothing reaches `main` except through a PR that Josh reviewed and
-  merged.** That applies in every repo, with no exceptions, including a
-  brand-new repo's first commit and repos created during a session.
+  merged.** That applies in every repo, including a brand-new repo's first
+  commit and repos created during a session. The one exception: boozer-calc's
+  drink list PRs (`chore/data-*`, opened by the app's Publish button) are
+  merged by its `automerge-data` workflow once secret-scan passes. Publish
+  shows Josh the edits before it pushes, and that is their review. Nothing
+  else auto-merges, other `chore/` branches included, and Claude never adds an
+  auto-merge to another repo or branch without Josh asking.
 - **Josh is the only approver.** Josh merging a PR is the OK for code going to
   "prod" (Josh's own devices), so no other reviewers are needed. Before asking
   to merge, show the PR's final diff and its CI state. Never merge a PR whose
