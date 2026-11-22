@@ -41,6 +41,66 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"C:/Users/Josh/AppData/Local/Programs/Python/Python310/python.exe\" \"A:/.dev/claude-session-monitor/monitor.py\" hook"
+          }
+        ]
+      }
     ]
   }
 }
