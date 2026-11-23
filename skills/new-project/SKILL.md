@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Scaffold a new side project in A:\.dev\<name>. A private GitHub repo under bearnz is created from the reviewed bearnz/project-template (README, common .gitignore, a lean CLAUDE.md, the secret-scan workflow), cloned locally, and a language overlay (python by default, godot, or base only) arrives on feature/scaffold as a PR for Josh to review and merge. Also covers syncing later base-template changes into existing repos. Use whenever Josh wants to start, spin up, bootstrap or scaffold a new project, repo or side project — "new project", "start a project for X", "set up a repo for this", "/new-project" — when throwaway work in a scratch folder should become a real project, and when an existing repo should pick up changes to the project template.
+description: Scaffold a new side project in $DEV_ROOT\<name> (the dev root). A private GitHub repo under bearnz is created from the reviewed bearnz/project-template (README, common .gitignore, a lean CLAUDE.md, the secret-scan workflow), cloned locally, and a language overlay (python by default, godot, or base only) arrives on feature/scaffold as a PR for Josh to review and merge. Also covers syncing later base-template changes into existing repos. Use whenever Josh wants to start, spin up, bootstrap or scaffold a new project, repo or side project — "new project", "start a project for X", "set up a repo for this", "/new-project" — when throwaway work in a scratch folder should become a real project, and when an existing repo should pick up changes to the project template.
 ---
 
 # New side project
@@ -40,8 +40,14 @@ call) only for the ones you can't infer:
 
 ## 2. Check nothing is already there
 
+Projects go in the dev root, the `DEV_ROOT` user environment variable
+(`bearnz/workstation`'s `bootstrap.ps1` sets it; in PowerShell it's
+`$env:DEV_ROOT`). The commands below are Git Bash. If `DEV_ROOT` is empty,
+stop and ask Josh where projects live on this PC rather than guessing a drive.
+
 ```bash
-ls "A:/.dev/<name>" 2>/dev/null && echo EXISTS
+echo "DEV_ROOT=$DEV_ROOT"
+ls "$DEV_ROOT/<name>" 2>/dev/null && echo EXISTS
 gh repo view "bearnz/<name>" --json name 2>/dev/null && echo REPO_EXISTS
 ```
 
@@ -56,9 +62,9 @@ outward-facing. On a yes:
 ```bash
 gh repo create "bearnz/<name>" --private --template bearnz/project-template --description "<description>"
 gh repo edit "bearnz/<name>" --delete-branch-on-merge
-git clone "https://github.com/bearnz/<name>.git" "A:/.dev/<name>"
-git -C "A:/.dev/<name>" log --oneline
-git -C "A:/.dev/<name>" switch -c feature/scaffold
+git clone "https://github.com/bearnz/<name>.git" "$DEV_ROOT/<name>"
+git -C "$DEV_ROOT/<name>" log --oneline
+git -C "$DEV_ROOT/<name>" switch -c feature/scaffold
 ```
 
 Every bearnz repo deletes a PR's head branch once it's merged.
@@ -69,8 +75,8 @@ no commits, GitHub hadn't finished generating the repo yet: delete the empty
 local clone, wait a few seconds, and clone again.
 
 **If Josh wants it local-only for now:** clone the template instead
-(`git clone https://github.com/bearnz/project-template.git "A:/.dev/<name>"`),
-then `git -C "A:/.dev/<name>" remote remove origin` and
+(`git clone https://github.com/bearnz/project-template.git "$DEV_ROOT/<name>"`),
+then `git -C "$DEV_ROOT/<name>" remote remove origin` and
 `git switch -c feature/scaffold`. When it goes to GitHub later, create an empty
 repo (no `--add-readme`, `--template` or `--push`), then run the same
 `gh repo edit --delete-branch-on-merge`. Josh pushes `main` from a
@@ -120,8 +126,8 @@ rather than assuming.
 ## 5. Commit, then review before anything leaves the PC
 
 ```bash
-git -C "A:/.dev/<name>" add -A
-git -C "A:/.dev/<name>" commit -m "chore: scaffold <name>"
+git -C "$DEV_ROOT/<name>" add -A
+git -C "$DEV_ROOT/<name>" commit -m "chore: scaffold <name>"
 ```
 
 The global pre-commit hook runs gitleaks on this commit. Then show Josh the
@@ -132,7 +138,7 @@ and ask before pushing.
 ## 6. Push the branch and raise the PR
 
 ```bash
-git -C "A:/.dev/<name>" push -u origin feature/scaffold
+git -C "$DEV_ROOT/<name>" push -u origin feature/scaffold
 ```
 
 Then use `/pr` against `main`. The secret-scan workflow runs on that PR. Report

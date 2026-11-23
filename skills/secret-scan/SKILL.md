@@ -17,8 +17,8 @@ Secret scanning has three layers. This skill installs the per-repo one:
    a short file that calls layer 2. GitHub only runs workflows that are in the
    repo itself, so every repo needs this file. It's what this skill adds.
 
-**Bumping gitleaks** happens in `A:\.dev\ci-templates`, not in any repo. Branch,
-change the version and checksum, open a PR there (its `self-scan` workflow runs
+**Bumping gitleaks** happens in `$DEV_ROOT\ci-templates` (the dev root), not
+in any repo. Branch, change the version and checksum, open a PR there (its `self-scan` workflow runs
 the change against ci-templates itself), and after Josh merges it, Josh moves
 the `v1` tag from a terminal (commands in that repo's README). Claude doesn't
 move the tag, because that's a force push. Callers pick up the change on their
