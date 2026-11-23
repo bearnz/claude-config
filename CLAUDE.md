@@ -123,7 +123,10 @@ so never run `git clean -x`/`-X` or `git add -f` here.
 
 ## New projects
 
-New side projects live in `A:\.dev\<kebab-case-name>`. Use the `/new-project`
+New side projects live in `$DEV_ROOT\<kebab-case-name>`. `DEV_ROOT` is a user
+environment variable naming the dev root on each PC (`D:\.dev` on the laptop,
+`A:\.dev` on the desktop), set by `bearnz/workstation`'s `bootstrap.ps1`.
+Never hardcode a drive in config or skills. Use the `/new-project`
 skill: GitHub creates `main` from `bearnz/project-template` (the
 language-neutral base), and the language overlay from `~/.claude/templates/`
 (python by default, godot) arrives as a PR. Template changes reach existing
@@ -131,5 +134,6 @@ repos through a copy-files PR, as the skill describes.
 
 ## Machine
 
-Windows 10. Git Bash and PowerShell are both available. Python 3.10 (`python`,
-`py`), `uv`, `gh` and gitleaks 8.30.1 (winget) are installed. Node is not.
+Windows (10 on the desktop, 11 on the laptop). Git Bash and PowerShell are
+both available. Python 3.10 (`python`, `py`), `uv`, `gh` and gitleaks 8.30.1
+(winget) are installed. Node is not.

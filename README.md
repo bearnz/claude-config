@@ -3,7 +3,7 @@
 Josh's Claude Code workflow config: global CLAUDE.md, push guard, git hooks,
 skills.
 
-This repo is `~/.claude` itself (`C:\Users\Josh\.claude`). Claude Code reads
+This repo is `~/.claude` itself (`%USERPROFILE%\.claude`). Claude Code reads
 the files from here, so the checkout is the live config.
 
 ## What's tracked
@@ -25,10 +25,22 @@ ignored, but it's still in the folder. **Never run `git clean -x` or `-X`, or
 
 ## Setting up on a machine
 
-For Windows. `settings.json` points the push guard at
-`C:/Users/Josh/.claude/hooks/git_push_guard.py`, an absolute path, so a PC
-with a different user name needs that path changed (through a PR).
-`setup.ps1` flags it.
+For Windows. Nothing in the repo names a user or a drive, so the same commit
+works on every PC. The hooks in `settings.json` run through Git Bash (Claude
+Code's default hook shell on Windows) and find their scripts through two
+variables:
+
+- `$HOME`: the push guard is `python "$HOME/.claude/hooks/git_push_guard.py"`.
+  Git Bash sets `HOME` to the user's profile folder when Windows doesn't.
+- `$DEV_ROOT`: the session monitor is
+  `python "$DEV_ROOT/claude-session-monitor/monitor.py" hook`. `DEV_ROOT` is a
+  user environment variable naming the dev root (`D:\.dev` on the laptop,
+  `A:\.dev` on the desktop). `bearnz/workstation`'s `bootstrap.ps1` sets it;
+  by hand it's `setx DEV_ROOT D:\.dev`, then restart Claude Code so it sees
+  the variable.
+
+Both call `python` from PATH, which `setup.ps1` installs. `setup.ps1` checks
+that `DEV_ROOT` is set and that every hook path exists.
 
 ### 1. Git, GitHub CLI and a GitHub sign-in
 
@@ -89,7 +101,9 @@ None of these are in the repo:
   path. Copy `projects/` across if the folders keep the same paths.
 - **Other secrets.** For example the Home Assistant token in
   `~/.config/home-assistant/token`. Make new ones rather than copying them.
-- **Projects.** Clone the repos you need into `A:\.dev`.
+- **Projects.** Clone the repos you need into `$DEV_ROOT` (`bearnz/workstation`
+  does this too). The session monitor hooks need
+  `claude-session-monitor` there.
 
 ## Testing
 

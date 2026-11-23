@@ -10,7 +10,8 @@
       2. Tools: git, gh, python, uv and gitleaks, installed with winget.
       3. Global git hooks: core.hooksPath points at ~/.claude/git-hooks, and
          git has a user name and email.
-      4. settings.json: every absolute path it uses exists on this PC.
+      4. settings.json: DEV_ROOT is set, and every path the hooks use
+         ($HOME/..., $DEV_ROOT/... or absolute) exists on this PC.
       5. GitHub CLI: signed in.
       6. Tests: the push guard and pre-push hook suites pass.
     It ends with a list of anything still to do by hand, and exits 1 if
@@ -101,19 +102,38 @@ if (-not (Find-Tool git)) {
 }
 
 Step 'settings.json paths'
+# Hook commands run through Git Bash, which expands $HOME and $DEV_ROOT, so
+# settings.json writes paths as "$HOME/..." or "$DEV_ROOT/...", in double
+# quotes. DEV_ROOT is the dev root, a user environment variable that
+# bearnz/workstation's bootstrap.ps1 sets. setx only reaches new processes,
+# so read the User scope too.
+$devRoot = $env:DEV_ROOT
+if (-not $devRoot) { $devRoot = [Environment]::GetEnvironmentVariable('DEV_ROOT', 'User') }
+if ($devRoot) { Ok "DEV_ROOT is $devRoot" }
+else { Todo 'DEV_ROOT is not set: setx DEV_ROOT <dev root> (D:\.dev on the laptop), then restart Claude Code' }
 $settings = Get-Content (Join-Path $Claude 'settings.json') -Raw | ConvertFrom-Json
 $paths = @()
 foreach ($event in $settings.hooks.PSObject.Properties) {
     foreach ($group in $event.Value) {
         foreach ($hook in $group.hooks) {
-            $paths += @($hook.command) + @($hook.args) | Where-Object { $_ -match '^[A-Za-z]:[\\/]' }
+            foreach ($s in @($hook.command) + @($hook.args) | Where-Object { $_ }) {
+                # The whole string, or a double-quoted part of a shell command.
+                $parts = @($s) + @([regex]::Matches($s, '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
+                $paths += $parts | Where-Object { $_ -match '^([A-Za-z]:[\\/]|\$HOME/|\$DEV_ROOT/)' }
+            }
         }
     }
 }
-if (-not $paths) { Ok 'no absolute paths in hooks' }
-foreach ($p in $paths) {
-    if (Test-Path $p) { Ok "$p exists" }
-    else { Todo "settings.json uses $p, which does not exist on this PC. Fix the path through a PR" }
+if (-not $paths) { Ok 'no paths in hooks' }
+foreach ($p in $paths | Select-Object -Unique) {
+    if ($p.StartsWith('$HOME/')) { $full = Join-Path $HOME $p.Substring(6) }
+    elseif ($p.StartsWith('$DEV_ROOT/')) {
+        if (-not $devRoot) { Todo "settings.json uses $p, which needs DEV_ROOT"; continue }
+        $full = Join-Path $devRoot $p.Substring(10)
+    }
+    else { $full = $p }
+    if (Test-Path $full) { Ok "$p exists ($full)" }
+    else { Todo "settings.json uses $p, which does not exist on this PC ($full)" }
 }
 
 Step 'GitHub CLI'
