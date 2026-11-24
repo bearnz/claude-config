@@ -135,5 +135,6 @@ repos through a copy-files PR, as the skill describes.
 ## Machine
 
 Windows (10 on the desktop, 11 on the laptop). Git Bash and PowerShell are
-both available. Python 3.10 (`python`, `py`), `uv`, `gh` and gitleaks 8.30.1
-(winget) are installed. Node is not.
+both available. Python 3 (`python`, `py`; setup installs the newest stable
+3.x, so check `python --version` rather than assume one), `uv`, `gh` and
+gitleaks 8.30.1 (winget) are installed. Node is not.

@@ -44,6 +44,14 @@ function Find-Tool($name) {
         Where-Object { $_.Source -notlike '*\WindowsApps\*' } |
         Select-Object -First 1
 }
+function Get-NewestWingetId($prefix) {
+    # Newest stable <prefix>N in winget, e.g. Python.Python.3. -> Python.Python.3.14.
+    # Pre-releases have letters in the version and don't match.
+    $re = '^.*\s(' + [regex]::Escape($prefix) + '(\d+))\s+\d+(\.\d+)+\s*$'
+    winget search --id $prefix --source winget --disable-interactivity |
+        ForEach-Object { if ($_ -match $re) { [pscustomobject]@{ id = $Matches[1]; n = [int]$Matches[2] } } } |
+        Sort-Object n | Select-Object -Last 1 -ExpandProperty id
+}
 
 if ($CheckOnly) { Write-Host "Check only: nothing will be installed or changed." }
 
@@ -61,7 +69,7 @@ Step 'Tools'
 $tools = [ordered]@{
     git      = 'Git.Git'
     gh       = 'GitHub.cli'
-    python   = 'Python.Python.3.10'
+    python   = 'Python.Python.3.'  # ends in '.': the newest stable 3.N
     uv       = 'astral-sh.uv'
     gitleaks = 'Gitleaks.Gitleaks'
 }
@@ -70,6 +78,11 @@ foreach ($name in $tools.Keys) {
     $id = $tools[$name]
     $found = Find-Tool $name
     if ($found) { Ok "$name ($($found.Source))"; continue }
+    if ($id.EndsWith('.')) {
+        $prefix = $id
+        $id = Get-NewestWingetId $prefix
+        if (-not $id) { Todo "$name is missing, and no winget package matches $($prefix)N"; continue }
+    }
     if ($CheckOnly) { Todo "$name is missing: winget install --id $id -e"; continue }
     winget install --id $id -e
     if ($LASTEXITCODE -eq 0) { Did "installed $id"; $installed = $true }
