@@ -57,22 +57,50 @@ $branch = git -C $Claude branch --show-current
 if ($branch -eq 'main') { Ok 'main is checked out' } else { Todo "the checkout is on '$branch'. The live config should be on main, apart from the branch of an open PR" }
 
 Step 'Tools'
+# Each key is the command looked for on PATH; the value is the winget package to
+# install when it is not there. Either an exact id, or idPrefix to take the
+# newest stable <idPrefix>.N. bearnz/workstation's packages.json names these
+# same tools the same way, so keep the two agreeing.
 $tools = [ordered]@{
-    git      = 'Git.Git'
-    gh       = 'GitHub.cli'
-    python   = 'Python.Python.3.10'
-    uv       = 'astral-sh.uv'
-    gitleaks = 'Gitleaks.Gitleaks'
+    git      = @{ id = 'Git.Git' }
+    gh       = @{ id = 'GitHub.cli' }
+    python   = @{ idPrefix = 'Python.Python.3'; scope = 'user'; custom = 'PrependPath=1' }
+    uv       = @{ id = 'astral-sh.uv'; scope = 'user' }
+    gitleaks = @{ id = 'Gitleaks.Gitleaks' }
 }
+
+# Newest stable <prefix>.N in winget, e.g. Python.Python.3 -> Python.Python.3.15.
+# Pre-releases have letters in the version and so don't match. Only ever called
+# for a tool that is actually missing: the search is the slow part, and its
+# answer is irrelevant once the tool is on PATH.
+function Resolve-NewestWingetId($prefix) {
+    $re = '^.*\s(' + [regex]::Escape($prefix) + '\.(\d+))\s+\d+(\.\d+)+\s*$'
+    $newest = winget search --id "$prefix." --source winget --disable-interactivity |
+        ForEach-Object { if ($_ -match $re) { [pscustomobject]@{ id = $Matches[1]; n = [int]$Matches[2] } } } |
+        Sort-Object n | Select-Object -Last 1
+    if ($newest) { return $newest.id }
+    return $null
+}
+
 $installed = $false
 foreach ($name in $tools.Keys) {
-    $id = $tools[$name]
+    $t = $tools[$name]
     $found = Find-Tool $name
     if ($found) { Ok "$name ($($found.Source))"; continue }
-    if ($CheckOnly) { Todo "$name is missing: winget install --id $id -e"; continue }
-    winget install --id $id -e
+    $id = $t.id
+    if (-not $id) {
+        # Resolving needs a winget search, so -CheckOnly does reach the network
+        # here. It reads only, and it is what makes the Todo name a real package.
+        $id = Resolve-NewestWingetId $t.idPrefix
+        if (-not $id) { Todo "$name is missing and no winget package matches $($t.idPrefix).N"; continue }
+    }
+    $a = @('install', '--id', $id, '-e')
+    if ($t.scope)  { $a += @('--scope', $t.scope) }
+    if ($t.custom) { $a += @('--custom', $t.custom) }
+    if ($CheckOnly) { Todo "$name is missing: winget $($a -join ' ')"; continue }
+    winget @a
     if ($LASTEXITCODE -eq 0) { Did "installed $id"; $installed = $true }
-    else { Todo "winget install --id $id -e failed (exit $LASTEXITCODE)" }
+    else { Todo "winget $($a -join ' ') failed (exit $LASTEXITCODE)" }
 }
 if ($installed) {
     # Pick up the new tools in this process without a new terminal.

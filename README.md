@@ -66,10 +66,10 @@ git -C "$HOME\.claude" checkout -f -B main --track origin/main
 powershell -ExecutionPolicy Bypass -File "$HOME\.claude\setup.ps1"
 ```
 
-It installs whatever is missing of git, gh, Python 3.10, uv and gitleaks
-(winget), points `core.hooksPath` at `~/.claude/git-hooks`, checks git's
-user name and email, checks the paths in `settings.json` and that gh is signed
-in, and runs both test suites. It's safe to re-run, and `-CheckOnly` reports
+It installs whatever is missing of git, gh, the newest stable Python, uv and
+gitleaks (winget), points `core.hooksPath` at `~/.claude/git-hooks`, checks
+git's user name and email, checks the paths in `settings.json` and that gh is
+signed in, and runs both test suites. It's safe to re-run, and `-CheckOnly` reports
 without changing anything. It ends with a list of anything left, and exits 1
 if there is any.
 
