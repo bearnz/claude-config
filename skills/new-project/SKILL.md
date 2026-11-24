@@ -108,12 +108,13 @@ rather than assuming.
   ```
 
   This runs `uv init --package --app --vcs none --author-from none
-  --python 3.10 --description "<description>" .`, which keeps the base README and
-  adds `pyproject.toml` (requires-python `>=3.10`, a `[project.scripts]` entry
-  named after the project, the `uv_build` backend), `.python-version` (`3.10`)
-  and `src/<package>/__init__.py`. It then adds pytest as a dev dependency
-  (`uv.lock` appears; commit it), writes `tests/test_smoke.py` and runs
-  `uv run pytest`. It refuses to run where a `pyproject.toml` already exists.
+  --description "<description>" .`, which keeps the base README and adds
+  `pyproject.toml` (requires-python `>=3.N`, a `[project.scripts]` entry named
+  after the project, the `uv_build` backend), `.python-version` (`3.N`) and
+  `src/<package>/__init__.py`. `3.N` is the minor version of the Python uv
+  finds on this PC, so report which one it picked. It then adds pytest as a
+  dev dependency (`uv.lock` appears; commit it), writes `tests/test_smoke.py`
+  and runs `uv run pytest`. It refuses to run where a `pyproject.toml` already exists.
   Afterwards run `uv run <name>` too. Once both have passed, fill CLAUDE.md and
   the README in: Running is `uv run <name>`, Testing is `uv run pytest`.
 - **godot**: the gitignore lines only. Godot writes `project.godot` itself when
