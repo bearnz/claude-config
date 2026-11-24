@@ -73,6 +73,11 @@ $tools = [ordered]@{
     uv       = 'astral-sh.uv'
     gitleaks = 'Gitleaks.Gitleaks'
 }
+# Extra winget args. Python goes in per user with PrependPath=1, so it's on
+# PATH ahead of the Store's python alias, the same as workstation's bootstrap.
+$extra = @{
+    python = '--scope user --custom PrependPath=1'
+}
 $installed = $false
 foreach ($name in $tools.Keys) {
     $id = $tools[$name]
@@ -83,10 +88,13 @@ foreach ($name in $tools.Keys) {
         $id = Get-NewestWingetId $prefix
         if (-not $id) { Todo "$name is missing, and no winget package matches $($prefix)N"; continue }
     }
-    if ($CheckOnly) { Todo "$name is missing: winget install --id $id -e"; continue }
-    winget install --id $id -e
+    $cmd = "winget install --id $id -e $($extra[$name])".TrimEnd()
+    if ($CheckOnly) { Todo "$name is missing: $cmd"; continue }
+    $a = @('install', '--id', $id, '-e')
+    if ($extra[$name]) { $a += $extra[$name] -split ' ' }
+    winget @a
     if ($LASTEXITCODE -eq 0) { Did "installed $id"; $installed = $true }
-    else { Todo "winget install --id $id -e failed (exit $LASTEXITCODE)" }
+    else { Todo "$cmd failed (exit $LASTEXITCODE)" }
 }
 if ($installed) {
     # Pick up the new tools in this process without a new terminal.
