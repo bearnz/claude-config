@@ -44,6 +44,14 @@ function Find-Tool($name) {
         Where-Object { $_.Source -notlike '*\WindowsApps\*' } |
         Select-Object -First 1
 }
+function Get-NewestWingetId($prefix) {
+    # Newest stable <prefix>N in winget, e.g. Python.Python.3. -> Python.Python.3.14.
+    # Pre-releases have letters in the version and don't match.
+    $re = '^.*\s(' + [regex]::Escape($prefix) + '(\d+))\s+\d+(\.\d+)+\s*$'
+    winget search --id $prefix --source winget --disable-interactivity |
+        ForEach-Object { if ($_ -match $re) { [pscustomobject]@{ id = $Matches[1]; n = [int]$Matches[2] } } } |
+        Sort-Object n | Select-Object -Last 1 -ExpandProperty id
+}
 
 if ($CheckOnly) { Write-Host "Check only: nothing will be installed or changed." }
 
@@ -61,19 +69,32 @@ Step 'Tools'
 $tools = [ordered]@{
     git      = 'Git.Git'
     gh       = 'GitHub.cli'
-    python   = 'Python.Python.3.10'
+    python   = 'Python.Python.3.'  # ends in '.': the newest stable 3.N
     uv       = 'astral-sh.uv'
     gitleaks = 'Gitleaks.Gitleaks'
+}
+# Extra winget args. Python goes in per user with PrependPath=1, so it's on
+# PATH ahead of the Store's python alias, the same as workstation's bootstrap.
+$extra = @{
+    python = '--scope user --custom PrependPath=1'
 }
 $installed = $false
 foreach ($name in $tools.Keys) {
     $id = $tools[$name]
     $found = Find-Tool $name
     if ($found) { Ok "$name ($($found.Source))"; continue }
-    if ($CheckOnly) { Todo "$name is missing: winget install --id $id -e"; continue }
-    winget install --id $id -e
+    if ($id.EndsWith('.')) {
+        $prefix = $id
+        $id = Get-NewestWingetId $prefix
+        if (-not $id) { Todo "$name is missing, and no winget package matches $($prefix)N"; continue }
+    }
+    $cmd = "winget install --id $id -e $($extra[$name])".TrimEnd()
+    if ($CheckOnly) { Todo "$name is missing: $cmd"; continue }
+    $a = @('install', '--id', $id, '-e')
+    if ($extra[$name]) { $a += $extra[$name] -split ' ' }
+    winget @a
     if ($LASTEXITCODE -eq 0) { Did "installed $id"; $installed = $true }
-    else { Todo "winget install --id $id -e failed (exit $LASTEXITCODE)" }
+    else { Todo "$cmd failed (exit $LASTEXITCODE)" }
 }
 if ($installed) {
     # Pick up the new tools in this process without a new terminal.
