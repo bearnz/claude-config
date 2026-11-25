@@ -13,9 +13,11 @@ wants doing by something that checks rather than something that assumes.
 
 ## Why not the plugin
 
-`commit-commands:clean_gone` from the official marketplace finds the right
-branches. What it then does with them is the problem: it deletes with
-`git branch -D` and removes worktrees with `git worktree remove --force`.
+`commit-commands:clean_gone` from the official marketplace finds gone branches
+by grepping `git branch -v`, which also matches a live branch whose commit
+subject contains `[gone]` (upstream #5914). What it then does with them is the
+bigger problem: it deletes with `git branch -D` and removes worktrees with
+`git worktree remove --force`.
 
 Run against a repo holding one merged and one unmerged stale branch, it deletes
 both without a word — the unmerged commit is left unreachable from any branch,
@@ -41,14 +43,18 @@ An upstream is only marked `gone` once its remote-tracking ref is removed.
 **2. List the candidates.**
 
 ```sh
-git branch -vv | grep ': gone\]'
+git for-each-ref --format='%(if:equals=[gone])%(upstream:track)%(then)%(refname:short)%(end)' refs/heads | grep .
 ```
 
-`-v` prints a bare `[gone]` and `-vv` the upstream's name
-(`[origin/feature/thing: gone]`) — either detects them; `-vv` is worth it for
-saying which upstream went in the report. A `+` prefix means the branch is
-checked out in a worktree and `*` means it is the current branch; strip either
-with `sed 's/^[+* ]//'`.
+One branch name per line: the local branches whose upstream is gone, and
+nothing else. Every other branch prints an empty line, which `grep .` drops.
+
+Read the tracking state rather than grepping the output of `git branch -v` or
+`-vv`. Those lines end with each branch's commit subject, so a pattern for
+`gone` also matches a live branch whose subject happens to mention it. The
+plugin has exactly that bug (upstream #5914), and this skill's own earlier grep
+for `: gone]` had a quieter version of it. `git branch -vv` is still the thing
+to show in the report, because it names the upstream that went.
 
 **3. Check each one is already somewhere safe.** This is the step that earns
 the skill. For each candidate, ask of every integration branch the repo has —
