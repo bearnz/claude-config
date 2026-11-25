@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Open a pull request from the current branch, targeting main by default (in repos that have a develop branch: develop -> main, anything else -> develop). Reads every commit on the branch and the full diff against the merge base, then writes a description that summarises the work by theme and calls out the specific places a reviewer should look hardest; if a PR is already open for the branch it updates that one instead of opening a second. Takes an optional argument — bare for a PR ready for review, `draft` to open or keep it as a draft, `ready` to take an open draft out of draft. Use this whenever the user wants a PR raised, described, updated, drafted or marked ready — "raise a PR", "open a pull request", "PR this", "draft PR", "WIP PR, not for review yet", "make a PR against develop", "write the PR description", "update the PR body", "mark the PR ready for review" — and prefer it over calling `gh pr create` freehand, since a body generated from commit subjects alone tells a reviewer nothing about risk.
+description: Open a pull request from the current branch, targeting main by default (in repos that have a develop branch: develop -> main, anything else -> develop). Reads every commit on the branch and the full diff against the merge base, then writes a description that summarises the work by theme and calls out the specific places a reviewer should look hardest; if a PR is already open for the branch it updates that one instead of opening a second. Takes an optional argument — bare for a PR ready for review, `draft` to open or keep it as a draft, `ready` to take an open draft out of draft. Use this whenever the user wants a PR raised, described, updated, drafted or marked ready — "raise a PR", "open a pull request", "PR this", "draft PR", "WIP PR, not for review yet", "make a PR against develop", "write the PR description", "update the PR body", "mark the PR ready for review", "stack this on #9", "stacked PR", "PR this on top of the other branch" — and prefer it over calling `gh pr create` freehand, since a body generated from commit subjects alone tells a reviewer nothing about risk.
 ---
 
 # Pull request from the branch
@@ -39,7 +39,8 @@ Two of those cells are the deliberate ones:
 
 Anything else in the argument is not a mode — treat it as an instruction about
 the PR itself (a target branch, a title, an emphasis for the body) and pick the
-mode from the surrounding request.
+mode from the surrounding request. A target branch that is another PR's branch
+means a stacked PR: see Stacking below.
 
 ## Branch targeting
 
@@ -51,6 +52,7 @@ Applied automatically by the collector:
 | any feature branch | yes | `develop` |
 | `develop` | yes | the trunk |
 | the trunk itself | either | nothing — stop and say so |
+| any branch, with `--base <branch>` | either | `<branch>` — a stacked PR |
 
 The default for side projects is feature branches straight onto `main`; a repo
 opts into the develop flow simply by having a `develop` branch on origin.
@@ -60,6 +62,46 @@ back to `origin/HEAD` only if neither exists. That order matters: `origin/HEAD`
 records whichever branch was checked out when the repo was cloned, which is a
 different question and is wrong often enough to send a PR at a feature branch.
 
+## Stacking
+
+Stack when a change builds on one still in review: cut the new branch from the
+parent PR's branch rather than from `origin/main`, and target that branch. Each
+PR then shows only its own change, and the merge order is visible in GitHub
+rather than written into PR bodies as "merge #9 first".
+
+**Use it when the second change needs the first** (it edits what the first
+added, or its description refers to it). Independent changes on the same repo
+are not a stack; give each its own branch from the trunk.
+
+How:
+
+- Collect with `--base <parent-branch>`. The commits, diff and description are
+  then scoped to what this branch adds on top of its parent. The collector's
+  STACK section names the parent's PR, or warns if the parent has none.
+- Without `--base`, the same section flags the opposite mistake: an open PR's
+  branch already inside this one, whose commits would otherwise be described as
+  this PR's own work. Take that as a prompt to stack, not a formality.
+- Open it with `gh pr create --base <parent-branch>`, and start the body with
+  `Stacked on #<n> — merge that first.`
+
+Two rules decide whether a stack lands cleanly, and both belong in the body of
+every stacked PR so they are in front of Josh when he merges:
+
+- **Bottom first, with "Create a merge commit".** Squash or rebase on the parent
+  rewrites its commits, so the child still carries the originals and needs a
+  rebase and force-push to recover — which the push guard denies. A merge
+  commit leaves nothing to rewrite.
+- **Never the child first.** Its base is the parent's branch, so merging it
+  lands it there, not on the trunk. It reads as merged and has not shipped.
+
+When the parent merges, check the child's base before anything else. GitHub
+may retarget it to the trunk itself once the parent's branch is deleted; if it
+has not, `gh pr edit <n> --base <trunk>` does it, no push needed.
+
+If review asks for changes on the parent, make them there, then **merge** the
+parent branch into each child (`git merge <parent-branch>`) and push. Do not
+rebase the children: that is a rewrite, and a rewrite needs a force-push.
+
 ## 1. Collect the evidence
 
 ```bash
@@ -67,8 +109,10 @@ sh "<skill-dir>/scripts/collect_pr_context.sh"
 ```
 
 POSIX `sh`, so on Windows run it through the Bash tool rather than PowerShell.
-Pass a per-file diff budget as the first argument if the default 300 lines is
-too tight (`sh collect_pr_context.sh 600`).
+Pass a per-file diff budget if the default 300 lines is too tight
+(`sh collect_pr_context.sh 600`), and `--base <branch>` for a stacked PR
+(`sh collect_pr_context.sh --base feature/parent`). They combine in either
+order.
 
 It fetches origin first, works out the target, then reports push state, every
 commit with its full body, the diffstat and diff against the **merge base**
