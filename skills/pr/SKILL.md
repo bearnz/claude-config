@@ -94,9 +94,13 @@ every stacked PR so they are in front of Josh when he merges:
 - **Never the child first.** Its base is the parent's branch, so merging it
   lands it there, not on the trunk. It reads as merged and has not shipped.
 
-When the parent merges, check the child's base before anything else. GitHub
-may retarget it to the trunk itself once the parent's branch is deleted; if it
-has not, `gh pr edit <n> --base <trunk>` does it, no push needed.
+When the parent merges, check the child's base before anything else. Once the
+parent's branch is deleted, GitHub retargets the child to the trunk itself: its
+timeline shows `automatic_base_change_succeeded` at the moment the branch goes.
+That happens without anyone acting here because these repos auto-delete a
+branch on merge. Where the branch survives (auto-delete off, or kept by hand),
+that has not been observed, so check rather than assume; if the base has not
+moved, `gh pr edit <n> --base <trunk>` fixes it with no push.
 
 If review asks for changes on the parent, make them there, then **merge** the
 parent branch into each child (`git merge <parent-branch>`) and push. Do not
