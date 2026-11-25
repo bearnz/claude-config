@@ -108,9 +108,18 @@ Find the worktree by ref, not by directory name — worktree folders are usually
 named after the session that made them and bear no relation to the branch:
 
 ```sh
-git worktree list --porcelain |
-  awk -v b="refs/heads/$branch" '/^worktree /{p=substr($0,10)} /^branch /{if (substr($0,8)==b) print p}'
+git for-each-ref --format='%(worktreepath)' "refs/heads/$branch"
 ```
+
+Empty output means the branch has no worktree. Resist the urge to parse
+`git worktree list` instead: its plain output puts the path first, so a path
+containing a space defeats field splitting, and the `--porcelain` form wants
+awk's whole-line and field variables — the dollar-sign-number ones. Those must
+never appear in a skill file. The loader substitutes them from the invoking
+command's arguments, so what reaches the session is the argument text rather
+than the variable, and the command is invalid by the time anyone runs it. The
+file reviews clean and breaks only at the moment of use, which is the worst
+place to find out.
 
 **5. Delete, without force.**
 
