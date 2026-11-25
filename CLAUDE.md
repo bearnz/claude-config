@@ -122,6 +122,15 @@ branch of an open PR, and after a merge switch back to `main` and pull.
 Credentials, transcripts and caches sit in the same folder as ignored files,
 so never run `git clean -x`/`-X` or `git add -f` here.
 
+Writing a skill: never put a shell positional variable (`$0`, `$1` and the
+rest) in a `SKILL.md`, not even inside a fenced code block. The loader
+substitutes them from the invoking command's arguments, so a snippet using one
+reaches the session with the argument text where the variable should be — the
+file reviews clean and the command is only invalid at the moment someone runs
+it. Named variables like `$branch` come through untouched. Reach for git
+plumbing instead of parsing output with awk fields: step 4 of
+`skills/clean-gone/SKILL.md` uses `%(worktreepath)` for exactly this reason.
+
 ## New projects
 
 New side projects live in `$DEV_ROOT\<kebab-case-name>`. `DEV_ROOT` is a user
