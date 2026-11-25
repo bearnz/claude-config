@@ -61,6 +61,14 @@ Rules that make the labels worth anything:
   `origin/main`, and land it through a PR (the `/pr` skill). Repos that already
   use `develop` (e.g. devil-horn-panic) branch from and PR into `develop`, and
   `develop` reaches `main` through a PR.
+- When a change builds on one still in review, **stack** it: cut the branch
+  from the parent PR's branch and target that branch (`/pr` covers how). Each
+  PR then shows only its own change. Independent changes still go on their own
+  branches from `origin/main`. Josh merges a stack bottom first, with "Create a
+  merge commit": squash or rebase on a parent strands the children on rewritten
+  history, and recovering needs a force-push. A child merged first lands in its
+  parent's branch, not on `main`. After a parent merges, check each child's
+  base before touching anything else.
 - Commit freely on branches, with Conventional Commits messages (the
   `commit-message` skill).
 - Josh often has uncommitted work in the main checkout. Don't stash it, reset
