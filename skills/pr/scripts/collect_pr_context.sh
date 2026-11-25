@@ -298,7 +298,8 @@ echo "=== STACK ==="
 if [ -z "${GH_OK:-}" ]; then
 	echo "unknown - needs an authenticated gh"
 elif [ -n "$BASE_OVERRIDE" ] && [ "$BASE" != "$TRUNK" ] && [ "$BASE" != "develop" ]; then
-	PARENT=$("$GH" pr list --head "$BASE" --state open --json number,url 		--jq '.[] | "#\(.number)  \(.url)"' 2>/dev/null)
+	PARENT=$("$GH" pr list --head "$BASE" --state open --json number,url \
+		--jq '.[] | "#\(.number)  \(.url)"' 2>/dev/null)
 	if [ -n "$PARENT" ]; then
 		echo "stacked on:      $PARENT  ($BASE)"
 		echo "merge order:     that PR first, with 'Create a merge commit'. Merging this one"
@@ -309,7 +310,8 @@ elif [ -n "$BASE_OVERRIDE" ] && [ "$BASE" != "$TRUNK" ] && [ "$BASE" != "develop
 	fi
 else
 	FOUND=""
-	for line in $("$GH" pr list --state open --json number,headRefName 		--jq '.[] | "\(.number):\(.headRefName)"' 2>/dev/null); do
+	for line in $("$GH" pr list --state open --json number,headRefName \
+		--jq '.[] | "\(.number):\(.headRefName)"' 2>/dev/null); do
 		n=${line%%:*}
 		head=${line#*:}
 		[ "$head" = "$BRANCH" ] && continue
