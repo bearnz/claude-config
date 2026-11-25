@@ -32,8 +32,9 @@ Rules that make the labels worth anything:
 
 - **Nothing reaches `main` except through a PR that Josh reviewed and
   merged.** That applies in every repo, including a brand-new repo's first
-  commit and repos created during a session. The one exception: boozer-calc's
-  drink list PRs (`chore/data-*`, opened by the app's Publish button) are
+  commit and repos created during a session. The one exception: widmark's
+  (`bearnz/widmark`, formerly boozer-calc) drink list PRs (`chore/data-*`,
+  opened by the app's Publish button) are
   merged by its `automerge-data` workflow once secret-scan passes. Publish
   shows Josh the edits before it pushes, and that is their review. Nothing
   else auto-merges, other `chore/` branches included, and Claude never adds an
