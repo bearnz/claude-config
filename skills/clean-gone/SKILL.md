@@ -51,19 +51,46 @@ checked out in a worktree and `*` means it is the current branch; strip either
 with `sed 's/^[+* ]//'`.
 
 **3. Check each one is already somewhere safe.** This is the step that earns
-the skill. For each candidate, test it against every integration branch the repo
-has — `origin/main`, `origin/master`, `origin/develop` — since a repo on the
-develop flow merges feature work there rather than into the trunk:
+the skill. For each candidate, ask of every integration branch the repo has —
+`origin/main`, `origin/master`, `origin/develop`, since a repo on the develop
+flow merges feature work there rather than into the trunk — whether merging the
+branch into it would change anything:
 
 ```sh
-git merge-base --is-ancestor "$branch" origin/main
+git merge-tree --write-tree origin/main "$branch" | head -n1 | xargs git diff --quiet origin/main
 ```
 
-Exit 0 means every commit on the branch is already in that branch and nothing is
-at stake. A branch that fails against all of them has commits that exist nowhere
-else: say how many (`git rev-list --count origin/main..$branch`) and what their
-subjects are, and **ask Josh before touching it**. Never fold it in with the safe
-ones.
+Exit 0 means merging would leave that integration branch exactly as it is, so
+every change on the branch is already there, however it got there. A conflict
+also lands as non-zero, because the merged tree then holds conflict markers.
+It is written as a pipe rather than capturing the tree in a variable so the file
+contains no shell substitution beyond a named variable — the only kind seen to
+come through the skill loader intact.
+
+If it fails against all of them, try patch equivalence before concluding
+anything:
+
+```sh
+git cherry origin/main "$branch"
+```
+
+No `+` line (empty output, or only `-` lines) also means nothing is at stake.
+Only when both checks fail against every integration branch does the branch
+hold work that exists nowhere else: say how many `+` lines there are and what
+their subjects are, and **ask Josh before touching it**. Never fold it in with
+the safe ones.
+
+Why two checks, and why not `git merge-base --is-ancestor`: ancestry only
+recognises a merge commit, and GitHub offers squash and rebase merging on these
+repos too. Both rewrite the commits, so a branch whose content landed stops
+being an ancestor of the trunk, and a check that cries wolf on every squash is
+one you learn to click past. The two checks here each have a blind spot the
+other covers. `git cherry` compares patch ids commit by commit, so a squash of
+several commits into one matches none of them; the merge-tree check fails when
+the trunk has edited the same lines again since the branch landed. Each passes
+only when the branch's changes are already upstream, so either one passing is
+enough. When both fail on work that did land, it gets held for Josh, which is
+the direction to err in.
 
 Skip `main`, `master` and `develop` themselves even when their upstream is gone
 — that means the remote branch was renamed or removed, which is a different
