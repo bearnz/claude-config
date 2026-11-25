@@ -1,14 +1,39 @@
 #!/bin/sh
 # Collect everything needed to write a pull request description, in one pass.
 #
-# Usage: sh collect_pr_context.sh [max_lines_per_file]
+# Usage: sh collect_pr_context.sh [--base <branch>] [max_lines_per_file]
 #
 # Works out the target branch (feature -> main by default; in repos with a
 # develop branch, develop -> main and anything else -> develop), then dumps the commits, the diff against the merge
 # base, and a set of signals worth a reviewer's attention.
+#
+# --base <branch> overrides the target, for a PR stacked on another PR's
+# branch: the commits and diff are then scoped to what this branch adds on top
+# of its parent, and the STACK section reports the parent's PR.
 set -u
 
-MAX_LINES=${1:-300}
+MAX_LINES=300
+BASE_OVERRIDE=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--base)
+		if [ $# -lt 2 ] || [ -z "$2" ]; then
+			echo "--base needs a branch name"
+			exit 1
+		fi
+		BASE_OVERRIDE=$2
+		shift 2
+		;;
+	--base=*)
+		BASE_OVERRIDE=${1#--base=}
+		shift
+		;;
+	*)
+		MAX_LINES=$1
+		shift
+		;;
+	esac
+done
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
 	echo "not a git repository (or no git on PATH)"
@@ -65,6 +90,14 @@ if [ "$BRANCH" = "$TRUNK" ]; then
 	exit 1
 fi
 
+if [ -n "$BASE_OVERRIDE" ]; then
+	if [ "$BASE_OVERRIDE" = "$BRANCH" ]; then
+		echo "target:          NONE - --base names the current branch"
+		exit 1
+	fi
+	BASE=$BASE_OVERRIDE
+	echo "rule:            explicit --base $BASE"
+else
 case "$BRANCH" in
 develop)
 	BASE=$TRUNK
@@ -82,6 +115,7 @@ develop)
 	fi
 	;;
 esac
+fi
 
 if ! git rev-parse --verify --quiet "refs/remotes/origin/$BASE" >/dev/null; then
 	echo "target:          NONE - origin/$BASE does not exist"
@@ -228,8 +262,10 @@ fi
 
 if [ -n "$GH" ]; then
 	echo "gh: $("$GH" --version 2>&1 | head -1)"
+	GH_OK=""
 	if "$GH" auth status >/dev/null 2>&1; then
 		echo "gh auth: ok"
+		GH_OK=1
 		# Whether a PR is already open for this branch decides create-vs-update,
 		# so report it as a fact rather than as a table to be eyeballed. --jq is
 		# gh's own embedded engine; it does not need jq installed.
@@ -250,6 +286,43 @@ if [ -n "$GH" ]; then
 	fi
 else
 	echo "gh: NOT INSTALLED - use the compare URL fallback (see SKILL.md step 5)"
+fi
+
+# Stacking. With --base on a non-trunk branch, report the parent's PR: it has
+# to merge first, with a merge commit, or this PR lands in the parent's branch
+# instead of the trunk. Without --base, look for the opposite mistake: an open
+# PR's branch already inside this one, whose commits would then be described
+# here as if they were this branch's own work.
+echo
+echo "=== STACK ==="
+if [ -z "${GH_OK:-}" ]; then
+	echo "unknown - needs an authenticated gh"
+elif [ -n "$BASE_OVERRIDE" ] && [ "$BASE" != "$TRUNK" ] && [ "$BASE" != "develop" ]; then
+	PARENT=$("$GH" pr list --head "$BASE" --state open --json number,url 		--jq '.[] | "#\(.number)  \(.url)"' 2>/dev/null)
+	if [ -n "$PARENT" ]; then
+		echo "stacked on:      $PARENT  ($BASE)"
+		echo "merge order:     that PR first, with 'Create a merge commit'. Merging this one"
+		echo "                 first lands it in $BASE, not in $TRUNK."
+	else
+		echo "WARNING: no open PR has $BASE as its head. A PR based on it would merge"
+		echo "         into a branch that is not on its way to $TRUNK."
+	fi
+else
+	FOUND=""
+	for line in $("$GH" pr list --state open --json number,headRefName 		--jq '.[] | "\(.number):\(.headRefName)"' 2>/dev/null); do
+		n=${line%%:*}
+		head=${line#*:}
+		[ "$head" = "$BRANCH" ] && continue
+		git rev-parse --verify --quiet "refs/remotes/origin/$head" >/dev/null || continue
+		if git merge-base --is-ancestor "origin/$head" HEAD &&
+			! git merge-base --is-ancestor "origin/$head" "$BASE_REF"; then
+			echo "NOTE: this branch contains open PR #$n ($head), which is not in $BASE yet."
+			echo "      Its commits will be described here as this PR's own. To stack"
+			echo "      on it instead, re-run with: --base $head"
+			FOUND=1
+		fi
+	done
+	[ -n "$FOUND" ] || echo "not stacked - no open PR's branch is inside this one"
 fi
 
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
