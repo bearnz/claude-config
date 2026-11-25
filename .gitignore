@@ -21,6 +21,7 @@
 # Only Josh's own skills. skills/synced/ is managed by the Claude app.
 !/skills/
 /skills/*
+!/skills/clean-gone/
 !/skills/commit-message/
 !/skills/new-project/
 !/skills/pr/
